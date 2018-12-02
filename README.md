@@ -1,0 +1,1 @@
+# anki21-addon-customize-sidebar
