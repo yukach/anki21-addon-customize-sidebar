@@ -1,57 +1,22 @@
 # -*- mode: Python ; coding: utf-8 -*-
 
-"""
-Anki2.1 add-on: customize sidebar of the browser.
-"""
+"""Anki2.1 add-on: customize sidebar of the browser."""
 
 from aqt import mw
 from aqt.browser import Browser
 from aqt.qt import QIcon
 from anki.hooks import wrap
-#from anki.lang import ngettext
 from operator import itemgetter
+
+__version__ = "1.0.0"
 
 config = mw.addonManager.getConfig(__name__)
 #print("config is", config)
-
-#  def _systemTagTree(self, root):
-#        tags = (
-#            (_("Whole Collection"), "ankibw", ""),
-#            (_("Current Deck"), "deck16", "deck:current"),
-#            (_("Added Today"), "view-pim-calendar.png", "added:1"),
-#            (_("Studied Today"), "view-pim-calendar.png", "rated:1"),
-#            (_("Again Today"), "view-pim-calendar.png", "rated:1:1"),
-#            (_("New"), "plus16.png", "is:new"),
-#            (_("Learning"), "stock_new_template_red.png", "is:learn"),
-#            (_("Review"), "clock16.png", "is:review"),
-#            (_("Due"), "clock16.png", "is:due"),
-#            (_("Marked"), "star16.png", "tag:marked"),
-#            (_("Suspended"), "media-playback-pause.png", "is:suspended"),
-#            (_("Leech"), "emblem-important.png", "tag:leech"))
-#        for name, icon, cmd in tags:
-#            item = self.CallbackItem(
-#                root, name, lambda c=cmd: self.setFilter(c))
-#            item.setIcon(0, QIcon(":/icons/" + icon))
-#        return root
-#
-#    def _favTree(self, root):
-
-#    def _stdTree(self, root):
-#        for name, filt, icon in [[_("Whole Collection"), "", "collection"],
-#                           [_("Current Deck"), "deck:current", "deck"]]:
-#            item = self.CallbackItem(
-#                root, name, self._filterFunc(filt))
-#            item.setIcon(0, QIcon(":/icons/{}.svg".format(icon)))
 
 #########################################
 # show some items
 #########################################
 def my_stdTree(self, root):
-    # root is sidebartreewidget
-    #for i in range(root.topLevelItemCount()):
-    #    # return item of type QTreeWidgetItem
-    #    item = root.topLevelItem(i)
-    #    print("item text is '%s'" % (item.text(0)))
     if config['show_item_marked']:
         item = self.CallbackItem(root, _("Marked"), self._filterFunc("tag:marked"))
         item.setIcon(0, QIcon(":/icons/tag.svg"))
@@ -93,10 +58,6 @@ def my_favTree(self, root, _old):
     for name, filt in sorted(saved.items()):
         item = self.CallbackItem(root, name, lambda s=filt: self.setFilter(s))
         item.setIcon(0, QIcon(":/icons/heart.svg"))
-        #for m in sorted(self.col.models.all(), key=itemgetter("name")):
-        #    mitem = self.CallbackItem(
-        #        root, m['name'], lambda m=m: self.setFilter("filter", str(m['name'])))
-        #    mitem.setIcon(0, QIcon(":/icons/heart.svg"))
 
 if config['collapse_filters']:
     Browser._favTree = wrap(Browser._favTree, my_favTree, 'around')
@@ -105,6 +66,10 @@ if config['collapse_filters']:
 # collapse 'Decks'
 #########################################
 def my_decksTree(self, root, _old):
+    for i in range(root.topLevelItemCount()):
+        # return item of type QTreeWidgetItem
+        item = root.topLevelItem(i)
+        #print("item text is '%s'" % (item.text(0)))
     root = self.CallbackItem(root, _("Decks"), None)
     root.setExpanded(False)
     root.setIcon(0, QIcon(":/icons/deck.svg"))
