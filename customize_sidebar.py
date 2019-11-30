@@ -8,7 +8,7 @@ from aqt.qt import QIcon
 from anki.hooks import wrap
 from operator import itemgetter
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 config = mw.addonManager.getConfig(__name__)
 #print("config is", config)
@@ -26,26 +26,28 @@ def my_stdTree(self, root):
     if config['show_item_leech']:
         item = self.CallbackItem(root, _("Leech"), self._filterFunc("tag:leech"))
         item.setIcon(0, QIcon(":/icons/tag.svg"))
+    if config['show_tree_today']:
+        today = self.CallbackItem(root, _("Today"), None)
+        today.setIcon(0, QIcon(":/icons/tag.svg"))
+        today.setExpanded(False)
+        item = self.CallbackItem(today, _("Added Today"), self._filterFunc("added:1"))
+        item = self.CallbackItem(today, _("Studied Today"), self._filterFunc("rated:1"))
+        item = self.CallbackItem(today, _("Again Today"), self._filterFunc("rated:1:1"))
     if config['show_tree_flags']:
-        root = self.CallbackItem(root, _("Flags"), None)
-        root.setExpanded(False)
-        root.setIcon(0, QIcon(":/icons/tag.svg"))
-        item = self.CallbackItem(root, _("Red"), self._filterFunc("flag:1"))
-        item.setIcon(0, QIcon(":/icons/tag.svg"))
-        item = self.CallbackItem(root, _("Orange"), self._filterFunc("flag:2"))
-        item.setIcon(0, QIcon(":/icons/tag.svg"))
-        item = self.CallbackItem(root, _("Green"), self._filterFunc("flag:3"))
-        item.setIcon(0, QIcon(":/icons/tag.svg"))
-        item = self.CallbackItem(root, _("Blue"), self._filterFunc("flag:4"))
-        item.setIcon(0, QIcon(":/icons/tag.svg"))
-        item = self.CallbackItem(root, _("No"), self._filterFunc("flag:0"))
-        item.setIcon(0, QIcon(":/icons/tag.svg"))
-        item = self.CallbackItem(root, _("Any"), self._filterFunc("-flag:0"))
-        item.setIcon(0, QIcon(":/icons/tag.svg"))
+        flags = self.CallbackItem(root, _("Flags"), None)
+        flags.setIcon(0, QIcon(":/icons/tag.svg"))
+        flags.setExpanded(False)
+        item = self.CallbackItem(flags, _("Red"), self._filterFunc("flag:1"))
+        item = self.CallbackItem(flags, _("Orange"), self._filterFunc("flag:2"))
+        item = self.CallbackItem(flags, _("Green"), self._filterFunc("flag:3"))
+        item = self.CallbackItem(flags, _("Blue"), self._filterFunc("flag:4"))
+        item = self.CallbackItem(flags, _("No"), self._filterFunc("flag:0"))
+        item = self.CallbackItem(flags, _("Any"), self._filterFunc("-flag:0"))
 
 if config['show_item_marked'] or \
    config['show_item_suspended'] or \
    config['show_item_leech'] or \
+   config['show_tree_today'] or \
    config['show_tree_flags']:
     Browser._stdTree = wrap(Browser._stdTree, my_stdTree)
 
