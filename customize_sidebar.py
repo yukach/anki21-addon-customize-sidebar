@@ -10,7 +10,7 @@ from anki.hooks import wrap
 from anki.lang import _
 from operator import itemgetter
 
-__version__ = "2.0.0-rc.2"
+__version__ = "2.0.0"
 
 config = mw.addonManager.getConfig(__name__)
 #print("config is", config)
