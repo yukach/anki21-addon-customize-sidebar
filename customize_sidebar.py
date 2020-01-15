@@ -5,18 +5,25 @@
 from aqt import mw
 from aqt.browser import Browser
 from aqt.qt import QIcon
+from anki import version
 from anki.hooks import wrap
 from operator import itemgetter
 
-__version__ = "1.2.0"
+__version__ = "2.0.0-rc.1"
 
 config = mw.addonManager.getConfig(__name__)
 #print("config is", config)
 
+# check anki version. v2.1.17 has new API
+anki_api_since_2_1_17 = tuple(int(i) for i in version.split(".")) >= (2,1,17)
+
+if anki_api_since_2_1_17:
+    from aqt.browser import SidebarItem
+
 #########################################
 # show some items
 #########################################
-def my_stdTree(self, root):
+def custom_stdTree_until_2_1_17(self, root):
     if config['show_item_marked']:
         item = self.CallbackItem(root, _("Marked"), self._filterFunc("tag:marked"))
         item.setIcon(0, QIcon(":/icons/tag.svg"))
@@ -44,17 +51,55 @@ def my_stdTree(self, root):
         item = self.CallbackItem(flags, _("No"), self._filterFunc("flag:0"))
         item = self.CallbackItem(flags, _("Any"), self._filterFunc("-flag:0"))
 
+def custom_stdTree_since_2_1_17(self, root):
+    if config['show_item_marked']:
+        item = SidebarItem(_("Marked"), ":/icons/tag.svg", self._filterFunc("tag:marked"))
+        root.addChild(item)
+    if config['show_item_suspended']:
+        item = SidebarItem(_("Suspended"), ":/icons/tag.svg", self._filterFunc("is:suspended"))
+        root.addChild(item)
+    if config['show_item_leech']:
+        item = SidebarItem(_("Leech"), ":/icons/tag.svg", self._filterFunc("tag:leech"))
+        root.addChild(item)
+    if config['show_tree_today']:
+        today = SidebarItem(_("Today"), ":/icons/tag.svg")
+        item = SidebarItem(_("Added Today"), "", self._filterFunc("added:1"))
+        today.addChild(item)
+        item = SidebarItem(_("Studied Today"), "", self._filterFunc("rated:1"))
+        today.addChild(item)
+        item = SidebarItem(_("Again Today"), "", self._filterFunc("rated:1:1"))
+        today.addChild(item)
+        root.addChild(today)
+    if config['show_tree_flags']:
+        flags = SidebarItem(_("Flags"), ":/icons/tag.svg")
+        item = SidebarItem(_("Red"), "", self._filterFunc("flag:1"))
+        flags.addChild(item)
+        item = SidebarItem(_("Orange"), "", self._filterFunc("flag:2"))
+        flags.addChild(item)
+        item = SidebarItem(_("Green"), "", self._filterFunc("flag:3"))
+        flags.addChild(item)
+        item = SidebarItem(_("Blue"), "", self._filterFunc("flag:4"))
+        flags.addChild(item)
+        item = SidebarItem(_("No"), "", self._filterFunc("flag:0"))
+        flags.addChild(item)
+        item = SidebarItem(_("Any"), "", self._filterFunc("-flag:0"))
+        flags.addChild(item)
+        root.addChild(flags)
+
 if config['show_item_marked'] or \
    config['show_item_suspended'] or \
    config['show_item_leech'] or \
    config['show_tree_today'] or \
    config['show_tree_flags']:
-    Browser._stdTree = wrap(Browser._stdTree, my_stdTree)
+    if anki_api_since_2_1_17:
+        Browser._stdTree = wrap(Browser._stdTree, custom_stdTree_since_2_1_17)
+    else:
+        Browser._stdTree = wrap(Browser._stdTree, custom_stdTree_until_2_1_17)
 
 #########################################
 # collapse 'Note Types'
 #########################################
-def my_modelTree(self, root, _old):
+def custom_modelTree_until_2_1_17(self, root, _old):
     root = self.CallbackItem(root, _("Note Types"), None)
     root.setExpanded(False)
     root.setIcon(0, QIcon(":/icons/notetype.svg"))
@@ -63,13 +108,29 @@ def my_modelTree(self, root, _old):
             root, m['name'], lambda m=m: self.setFilter("note", str(m['name'])))
         mitem.setIcon(0, QIcon(":/icons/notetype.svg"))
 
+def custom_modelTree_since_2_1_17(self, root, _old):
+    types = SidebarItem(_("Note Types"), ":/icons/notetype.svg")
+    for m in sorted(self.col.models.all(), key=itemgetter("name")):
+        item = SidebarItem(
+            m["name"],
+            ":/icons/notetype.svg",
+            lambda m=m: self.setFilter("note", m["name"]),  # type: ignore
+        )
+        types.addChild(item)
+    root.addChild(types)
+
 if config['collapse_note_types']:
-    Browser._modelTree = wrap(Browser._modelTree, my_modelTree, 'around')
+    if anki_api_since_2_1_17:
+        Browser._modelTree = wrap(
+            Browser._modelTree, custom_modelTree_since_2_1_17, 'around')
+    else:
+        Browser._modelTree = wrap(
+            Browser._modelTree, custom_modelTree_until_2_1_17, 'around')
 
 #########################################
 # collapse 'Filters'
 #########################################
-def my_favTree(self, root, _old):
+def custom_favTree_until_2_1_17(self, root, _old):
     root = self.CallbackItem(root, _("My Filters"), None)
     root.setExpanded(False)
     root.setIcon(0, QIcon(":/icons/heart.svg"))
@@ -78,13 +139,24 @@ def my_favTree(self, root, _old):
         item = self.CallbackItem(root, name, lambda s=filt: self.setFilter(s))
         item.setIcon(0, QIcon(":/icons/heart.svg"))
 
+def custom_favTree_since_2_1_17(self, root, _old):
+    favs = SidebarItem(_("My Filters"), ":/icons/heart.svg")
+    for name, filt in sorted(self.col.conf.get('savedFilters', {}).items()):
+        item = SidebarItem(name, ":/icons/heart.svg",
+                           lambda s=filt: self.setFilter(s))
+        favs.addChild(item)
+    root.addChild(favs)
+
 if config['collapse_filters']:
-    Browser._favTree = wrap(Browser._favTree, my_favTree, 'around')
+    if anki_api_since_2_1_17:
+        Browser._favTree = wrap(Browser._favTree, custom_favTree_since_2_1_17, 'around')
+    else:
+        Browser._favTree = wrap(Browser._favTree, custom_favTree_until_2_1_17, 'around')
 
 #########################################
 # collapse 'Decks'
 #########################################
-def my_decksTree(self, root, _old):
+def custom_decksTree_until_2_1_17(self, root, _old):
     for i in range(root.topLevelItemCount()):
         # return item of type QTreeWidgetItem
         item = root.topLevelItem(i)
@@ -105,5 +177,26 @@ def my_decksTree(self, root, _old):
             fillGroups(item, g[5], newhead)
     fillGroups(root, grps)
 
+def custom_decksTree_since_2_1_17(self, root, _old):
+    decks = SidebarItem(_("Decks"), ":/icons/deck.svg")
+    grps = self.col.sched.deckDueTree()
+    def fillGroups(root, grps, head=""):
+        for g in grps:
+            item = SidebarItem(
+                g[0],
+                ":/icons/deck.svg",
+                lambda g=g: self.setFilter("deck", head + g[0]),
+                lambda expanded, g=g: self.mw.col.decks.collapseBrowser(g[1]),
+                not self.mw.col.decks.get(g[1]).get("browserCollapsed", False),
+            )
+            root.addChild(item)
+            newhead = head + g[0] + "::"
+            fillGroups(item, g[5], newhead)
+    fillGroups(decks, grps)
+    root.addChild(decks)
+
 if config['collapse_decks']:
-    Browser._decksTree = wrap(Browser._decksTree, my_decksTree, 'around')
+    if anki_api_since_2_1_17:
+        Browser._decksTree = wrap(Browser._decksTree, custom_decksTree_since_2_1_17, 'around')
+    else:
+        Browser._decksTree = wrap(Browser._decksTree, custom_decksTree_until_2_1_17, 'around')
